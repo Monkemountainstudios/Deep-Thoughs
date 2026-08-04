@@ -1237,20 +1237,20 @@
     const lowpass = context.createBiquadFilter();
     const wet = context.createGain();
 
-    preDelay.delayTime.value = randomBetween(0.009, 0.017);
+    preDelay.delayTime.value = randomBetween(0.009, 0.057);
 
     highpass.type = "highpass";
     highpass.frequency.value = 260;
 
     lowpass.type = "lowpass";
-    lowpass.frequency.value = randomBetween(3900, 4900);
+    lowpass.frequency.value = randomBetween(3900, 6900);
 
-    wet.gain.value = randomBetween(0.065, 0.095);
+    wet.gain.value = randomBetween(0.25, 0.5);
 
     convolver.buffer = makeImpulseResponse(
       context,
-      randomBetween(0.55, 0.85),
-      randomBetween(2.2, 3.1)
+      randomBetween(1.1, 3.85),
+      randomBetween(1.4, 3.1)
     );
 
     input.connect(preDelay);
