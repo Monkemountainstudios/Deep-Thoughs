@@ -13,19 +13,15 @@
 
     <div class="status" aria-live="polite">
       <span id="lamp" class="lamp"></span>
-      <span id="statusText">READING THE ARCHIVE</span>
+      <span id="statusText">DORMANT</span>
     </div>
 
-    <button id="thoughtButton" type="button" disabled>PLEASE WAIT</button>
+    <button id="loadButton" type="button">LOAD VOCABULARY</button>
 
-    <section class="thought-panel" aria-live="polite">
-      <p id="thoughtText">The machine is gathering words.</p>
+    <section class="report" aria-labelledby="reportTitle">
+      <h2 id="reportTitle">Vocabulary report</h2>
+      <pre id="reportText">Nothing loaded yet.</pre>
     </section>
-
-    <details class="report">
-      <summary>Vocabulary report</summary>
-      <pre id="reportText">Loading...</pre>
-    </details>
   </main>
 
   <script src="program.js"></script>
