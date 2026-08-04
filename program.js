@@ -630,7 +630,7 @@
   }
 
   function sentenceItWas() {
-    const it = pickWord("pronoun", "it");
+    const it = pickWord("pronoun", "it", "he", "she");
     const was = pickAvailableWord("auxiliary", ["was", "is", "will"]);
 
     return {
