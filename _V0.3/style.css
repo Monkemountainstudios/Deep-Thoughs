@@ -26,7 +26,7 @@ body {
 }
 
 .machine {
-  width: min(100%, 610px);
+  width: min(100%, 590px);
   padding: 30px 26px;
   border: 1px solid var(--border);
   background: rgba(20, 20, 20, 0.96);
@@ -106,7 +106,7 @@ button:disabled {
 .thought-panel {
   display: grid;
   place-items: center;
-  min-height: 180px;
+  min-height: 170px;
   margin-top: 25px;
   padding: 24px 18px;
   border-top: 1px solid #34322f;
@@ -120,7 +120,6 @@ button:disabled {
   font-size: clamp(1rem, 3.5vw, 1.3rem);
   line-height: 1.75;
   letter-spacing: .045em;
-  transition: opacity .35s ease;
 }
 
 .report {
