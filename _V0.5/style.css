@@ -106,7 +106,7 @@ button:disabled {
 .thought-panel {
   display: grid;
   place-items: center;
-  min-height: 150px;
+  min-height: 180px;
   margin-top: 25px;
   padding: 24px 18px;
   border-top: 1px solid #34322f;
@@ -114,22 +114,13 @@ button:disabled {
 }
 
 #thoughtText {
-  width: 100%;
   margin: 0;
   text-align: center;
   color: #ddd7cb;
-  font-size: clamp(.95rem, 3.2vw, 1.25rem);
+  font-size: clamp(1rem, 3.5vw, 1.3rem);
   line-height: 1.75;
   letter-spacing: .045em;
-  overflow-wrap: anywhere;
-  transition: opacity .25s ease;
-}
-
-#thoughtText.idle {
-  color: #77736a;
-  font-size: .78rem;
-  letter-spacing: .1em;
-  text-transform: uppercase;
+  transition: opacity .35s ease;
 }
 
 .report {

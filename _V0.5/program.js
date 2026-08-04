@@ -2,9 +2,8 @@
   "use strict";
 
   // ------------------------------------------------------------
-  // DEEP THOUGS — V0.6
+  // DEEP THOUGS — V0.5
   // Prosody, dramatic pauses, stress, room presence,
-  // continuous thought, live rolling captions, tighter phrasing,
   // abandoned thoughts, and stitched plural suffixes.
   // ------------------------------------------------------------
 
@@ -36,11 +35,6 @@
   let vocabularyReady = false;
   let audioReady = false;
   let speaking = false;
-  let continuousThinking = false;
-  let stopRequested = false;
-  let loopToken = 0;
-  let captionTimers = [];
-  const captionWords = [];
 
   const PLURAL_DETERMINERS = new Set([
     "all", "two", "these", "those", "many", "several", "both"
@@ -49,22 +43,33 @@
   initialise();
 
   thoughtButton.addEventListener("click", async () => {
-    if (continuousThinking) {
-      requestStop();
-      return;
-    }
+    if (speaking) return;
 
     try {
+      speaking = true;
       thoughtButton.disabled = true;
+
       await prepareAudio();
-      startContinuousThinking();
+
+      const performance = buildPerformance();
+      thoughtText.textContent = formatPerformance(performance);
+
+      statusText.textContent = "THINKING";
+      lamp.classList.add("active");
+
+      await perform(performance);
+
+      statusText.textContent = "VOCABULARY READY";
+      thoughtButton.textContent = "THINK AGAIN";
+      thoughtButton.disabled = false;
+      speaking = false;
     } catch (error) {
       console.error(error);
       statusText.textContent = "THOUGHT FAILED";
       thoughtText.textContent = error.message;
-      thoughtText.classList.remove("idle");
       thoughtButton.textContent = "TRY AGAIN";
       thoughtButton.disabled = false;
+      speaking = false;
       lamp.classList.remove("active");
     }
   });
@@ -79,9 +84,8 @@
       vocabularyReady = true;
       reportText.textContent = makeVocabularyReport(audioFiles.length);
       statusText.textContent = "VOCABULARY READY";
-      thoughtText.textContent = "Awaiting a thought.";
-      thoughtText.classList.add("idle");
-      thoughtButton.textContent = "START THINKING";
+      thoughtText.textContent = "The machine now has words.";
+      thoughtButton.textContent = "THINK A THOUGHT";
       thoughtButton.disabled = false;
       lamp.classList.add("active");
     } catch (error) {
@@ -93,76 +97,6 @@
       thoughtButton.disabled = false;
       thoughtButton.onclick = () => window.location.reload();
     }
-  }
-
-  function startContinuousThinking() {
-    continuousThinking = true;
-    stopRequested = false;
-    speaking = true;
-    loopToken += 1;
-
-    thoughtButton.textContent = "STOP THINKING";
-    thoughtButton.disabled = false;
-    statusText.textContent = "THINKING";
-    lamp.classList.add("active");
-    thoughtText.classList.remove("idle");
-
-    clearCaptionTimers();
-    captionWords.length = 0;
-    thoughtText.textContent = "";
-
-    thoughtLoop(loopToken);
-  }
-
-  function requestStop() {
-    if (!continuousThinking || stopRequested) return;
-
-    stopRequested = true;
-    thoughtButton.disabled = true;
-    thoughtButton.textContent = "FINISHING THOUGHT";
-    statusText.textContent = "CONCLUDING";
-  }
-
-  async function thoughtLoop(token) {
-    try {
-      while (continuousThinking && token === loopToken) {
-        const performance = buildPerformance();
-        await perform(performance, token);
-
-        if (stopRequested || token !== loopToken) {
-          stopContinuousThinking();
-          return;
-        }
-
-        const silence = chooseBetweenThoughtPause();
-        await waitSeconds(silence, token);
-      }
-    } catch (error) {
-      console.error(error);
-      stopContinuousThinking();
-      statusText.textContent = "THOUGHT FAILED";
-      thoughtText.textContent = error.message;
-    }
-  }
-
-  function stopContinuousThinking() {
-    continuousThinking = false;
-    stopRequested = false;
-    speaking = false;
-    loopToken += 1;
-
-    thoughtButton.textContent = "START THINKING";
-    thoughtButton.disabled = false;
-    statusText.textContent = "VOCABULARY READY";
-    lamp.classList.add("active");
-  }
-
-  function chooseBetweenThoughtPause() {
-    const roll = Math.random();
-
-    if (roll < 0.08) return randomBetween(7.0, 14.0);
-    if (roll < 0.32) return randomBetween(3.5, 6.5);
-    return randomBetween(1.7, 3.8);
   }
 
   // ------------------------------------------------------------
@@ -680,7 +614,7 @@
 
     statusText.textContent = "PREPARING THE VOICE";
     thoughtText.textContent = "Loading recorded words...";
-    thoughtButton.textContent = "LOADING VOICE";
+    thoughtButton.textContent = "LOADING AUDIO";
 
     const entries = flattenVocabulary(vocabulary);
     let loaded = 0;
@@ -704,7 +638,7 @@
     audioReady = true;
   }
 
-  async function perform(performance, token) {
+  async function perform(performance) {
     let cursor = audioContext.currentTime + 0.08;
     const style = performanceStyle(performance.mode);
     const wordEvents = performance.events.filter(event => event.type === "word");
@@ -721,21 +655,14 @@
         : spokenWordIndex / (wordEvents.length - 1);
 
       const pitchArc = cadencePitch(style.cadence, progress);
-      const stressPitch = 1 + event.stress * randomBetween(0.010, 0.028);
-      const stressGain = 1 + event.stress * randomBetween(0.04, 0.13);
+      const stressPitch = 1 + event.stress * randomBetween(0.012, 0.032);
+      const stressGain = 1 + event.stress * randomBetween(0.05, 0.16);
 
       const start = cursor;
-
-      scheduleCaptionWord(
-        event.entry.word,
-        start,
-        token
-      );
-
       const end = scheduleWord(
         event.entry,
         start,
-        style.basePitch * pitchArc * stressPitch * randomBetween(0.995, 1.005),
+        style.basePitch * pitchArc * stressPitch * randomBetween(0.994, 1.006),
         style.gain * stressGain,
         style.wet
       );
@@ -745,49 +672,11 @@
     }
 
     if (Math.random() < style.breathChance) {
-      cursor += randomBetween(0.22, 0.6);
+      cursor += randomBetween(0.3, 0.8);
       cursor = scheduleNaturalEvent(cursor, style.wet * 1.15);
     }
 
-    await waitUntil(cursor + 0.15, token);
-  }
-
-  function scheduleCaptionWord(word, startTime, token) {
-    const delay = Math.max(
-      0,
-      (startTime - audioContext.currentTime) * 1000
-    );
-
-    const timer = window.setTimeout(() => {
-      if (token !== loopToken || !continuousThinking) return;
-
-      captionWords.push(word);
-
-      const maximumWords = captionLimit();
-      while (captionWords.length > maximumWords) {
-        captionWords.shift();
-      }
-
-      thoughtText.textContent = captionWords.join(" ");
-    }, delay);
-
-    captionTimers.push(timer);
-  }
-
-  function captionLimit() {
-    const width = window.innerWidth;
-
-    if (width < 430) return 6;
-    if (width < 700) return 8;
-    return 10;
-  }
-
-  function clearCaptionTimers() {
-    for (const timer of captionTimers) {
-      window.clearTimeout(timer);
-    }
-
-    captionTimers = [];
+    await waitUntil(cursor + 0.18);
   }
 
   function scheduleWord(entry, startTime, playbackRate, gainValue, wetAmount) {
@@ -872,22 +761,20 @@
     let mean = style.wordGap;
     let variation = style.wordGapVariation;
 
-    // These are phrase cues, not fixed pauses.
-    // Every value is still randomized.
     const roleAdjustments = {
-      connector: [0.10, 0.09],
-      preposition: [0.045, 0.05],
-      modal: [0.055, 0.055],
-      auxiliary: [0.025, 0.035],
-      verb: [0.07, 0.065],
-      noun: [0.025, 0.035],
-      adjective: [0.00, 0.018],
-      adverb: [0.025, 0.035],
-      interjection: [0.30, 0.18],
-      final: [0.34, 0.20],
-      "abandoned-final": [0.58, 0.30],
-      correction: [0.42, 0.22],
-      aside: [0.20, 0.14]
+      connector: [0.22, 0.14],
+      preposition: [0.11, 0.09],
+      modal: [0.16, 0.12],
+      auxiliary: [0.08, 0.07],
+      verb: [0.15, 0.12],
+      noun: [0.07, 0.07],
+      adjective: [0.03, 0.05],
+      adverb: [0.08, 0.07],
+      interjection: [0.45, 0.22],
+      final: [0.48, 0.26],
+      "abandoned-final": [0.75, 0.35],
+      correction: [0.55, 0.25],
+      aside: [0.28, 0.18]
     };
 
     const adjustment = roleAdjustments[event.role];
@@ -898,16 +785,16 @@
     }
 
     if (event.stress > 0.65) {
-      mean += randomBetween(0.025, 0.10);
+      mean += randomBetween(0.05, 0.18);
     }
 
     if (Math.random() < style.dramaticPauseChance) {
-      mean += randomBetween(0.28, 0.85);
-      variation += 0.14;
+      mean += randomBetween(0.35, 1.0);
+      variation += 0.18;
     }
 
     return Math.max(
-      0.008,
+      0.035,
       mean + randomBetween(-variation, variation)
     );
   }
@@ -925,47 +812,47 @@
   function performanceStyle(mode) {
     const styles = {
       reflective: {
-        wordGap: 0.024, wordGapVariation: 0.016,
+        wordGap: 0.12, wordGapVariation: 0.08,
         basePitch: 0.995, gain: 0.69, wet: 0.085,
         cadence: "falling", dramaticPauseChance: 0.08, breathChance: 0.45
       },
       oracle: {
-        wordGap: 0.030, wordGapVariation: 0.020,
+        wordGap: 0.15, wordGapVariation: 0.10,
         basePitch: 0.988, gain: 0.72, wet: 0.10,
         cadence: "hill", dramaticPauseChance: 0.18, breathChance: 0.42
       },
       measured: {
-        wordGap: 0.020, wordGapVariation: 0.014,
+        wordGap: 0.10, wordGapVariation: 0.065,
         basePitch: 1.0, gain: 0.70, wet: 0.075,
         cadence: "falling", dramaticPauseChance: 0.05, breathChance: 0.32
       },
       solemn: {
-        wordGap: 0.034, wordGapVariation: 0.022,
+        wordGap: 0.16, wordGapVariation: 0.10,
         basePitch: 0.982, gain: 0.68, wet: 0.10,
         cadence: "falling", dramaticPauseChance: 0.13, breathChance: 0.52
       },
       certain: {
-        wordGap: 0.016, wordGapVariation: 0.012,
+        wordGap: 0.085, wordGapVariation: 0.05,
         basePitch: 1.006, gain: 0.74, wet: 0.07,
         cadence: "falling", dramaticPauseChance: 0.03, breathChance: 0.24
       },
       story: {
-        wordGap: 0.020, wordGapVariation: 0.016,
+        wordGap: 0.095, wordGapVariation: 0.07,
         basePitch: 1.002, gain: 0.70, wet: 0.075,
         cadence: "wandering", dramaticPauseChance: 0.06, breathChance: 0.34
       },
       dreamlike: {
-        wordGap: 0.032, wordGapVariation: 0.024,
+        wordGap: 0.15, wordGapVariation: 0.12,
         basePitch: 1.006, gain: 0.64, wet: 0.11,
         cadence: "wandering", dramaticPauseChance: 0.12, breathChance: 0.58
       },
       odd: {
-        wordGap: 0.022, wordGapVariation: 0.020,
+        wordGap: 0.10, wordGapVariation: 0.10,
         basePitch: 1.012, gain: 0.70, wet: 0.08,
         cadence: "rising", dramaticPauseChance: 0.10, breathChance: 0.40
       },
       "self-correcting": {
-        wordGap: 0.028, wordGapVariation: 0.022,
+        wordGap: 0.13, wordGapVariation: 0.11,
         basePitch: 0.997, gain: 0.67, wet: 0.09,
         cadence: "wandering", dramaticPauseChance: 0.08, breathChance: 0.55
       }
@@ -1198,30 +1085,14 @@
     return Math.floor(randomBetween(min, max + 1));
   }
 
-  function waitUntil(targetTime, token = loopToken) {
+  function waitUntil(targetTime) {
     const milliseconds =
       Math.max(0, targetTime - audioContext.currentTime) * 1000;
 
     return new Promise(resolve => {
-      window.setTimeout(() => {
-        resolve(token === loopToken);
-      }, milliseconds);
+      window.setTimeout(resolve, milliseconds);
     });
   }
-
-  function waitSeconds(seconds, token = loopToken) {
-    return new Promise(resolve => {
-      window.setTimeout(() => {
-        resolve(token === loopToken);
-      }, seconds * 1000);
-    });
-  }
-
-  window.addEventListener("pagehide", () => {
-    continuousThinking = false;
-    loopToken += 1;
-    clearCaptionTimers();
-  });
 
   window.deepThoughs = {
     vocabulary,
