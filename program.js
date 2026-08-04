@@ -51,7 +51,7 @@
   let lastRarePath = null;
 
   const PLURAL_DETERMINERS = new Set([
-    "all", "two", "these", "those", "many", "several", "both"
+    "all", "two", "these", "those", "many", "several", "both", "three", "four", "heaps", 
   ]);
 
   initialise();
@@ -1158,47 +1158,47 @@
     const styles = {
       reflective: {
         wordGap: 0.024, wordGapVariation: 0.016,
-        basePitch: 0.995, gain: 0.69, wet: 0.085,
+        basePitch: 0.995, gain: 0.69, wet: 0.3,
         cadence: "falling", dramaticPauseChance: 0.08, breathChance: 0.45
       },
       oracle: {
         wordGap: 0.030, wordGapVariation: 0.020,
-        basePitch: 0.988, gain: 0.72, wet: 0.10,
+        basePitch: 0.988, gain: 0.72, wet: 0.350,
         cadence: "hill", dramaticPauseChance: 0.18, breathChance: 0.42
       },
       measured: {
         wordGap: 0.020, wordGapVariation: 0.014,
-        basePitch: 1.0, gain: 0.70, wet: 0.075,
+        basePitch: 1.0, gain: 0.70, wet: 0.25,
         cadence: "falling", dramaticPauseChance: 0.05, breathChance: 0.32
       },
       solemn: {
         wordGap: 0.034, wordGapVariation: 0.022,
-        basePitch: 0.982, gain: 0.68, wet: 0.10,
+        basePitch: 0.982, gain: 0.68, wet: 0.25,
         cadence: "falling", dramaticPauseChance: 0.13, breathChance: 0.52
       },
       certain: {
         wordGap: 0.016, wordGapVariation: 0.012,
-        basePitch: 1.006, gain: 0.74, wet: 0.07,
+        basePitch: 1.006, gain: 0.74, wet: 0.27,
         cadence: "falling", dramaticPauseChance: 0.03, breathChance: 0.24
       },
       story: {
         wordGap: 0.020, wordGapVariation: 0.016,
-        basePitch: 1.002, gain: 0.70, wet: 0.075,
+        basePitch: 1.002, gain: 0.70, wet: 0.2,
         cadence: "wandering", dramaticPauseChance: 0.06, breathChance: 0.34
       },
       dreamlike: {
         wordGap: 0.032, wordGapVariation: 0.024,
-        basePitch: 1.006, gain: 0.64, wet: 0.11,
+        basePitch: 1.006, gain: 0.64, wet: 0.5,
         cadence: "wandering", dramaticPauseChance: 0.12, breathChance: 0.58
       },
       odd: {
         wordGap: 0.022, wordGapVariation: 0.020,
-        basePitch: 1.012, gain: 0.70, wet: 0.08,
+        basePitch: 1.012, gain: 0.70, wet: 0.35,
         cadence: "rising", dramaticPauseChance: 0.10, breathChance: 0.40
       },
       "self-correcting": {
         wordGap: 0.028, wordGapVariation: 0.022,
-        basePitch: 0.997, gain: 0.67, wet: 0.09,
+        basePitch: 0.997, gain: 0.67, wet: 0.54,
         cadence: "wandering", dramaticPauseChance: 0.08, breathChance: 0.55
       }
     };
@@ -1237,20 +1237,20 @@
     const lowpass = context.createBiquadFilter();
     const wet = context.createGain();
 
-    preDelay.delayTime.value = randomBetween(0.009, 0.017);
+    preDelay.delayTime.value = randomBetween(0.009, 0.057);
 
     highpass.type = "highpass";
     highpass.frequency.value = 260;
 
     lowpass.type = "lowpass";
-    lowpass.frequency.value = randomBetween(3900, 4900);
+    lowpass.frequency.value = randomBetween(3900, 6900);
 
-    wet.gain.value = randomBetween(0.065, 0.095);
+    wet.gain.value = randomBetween(0.29, 0.6);
 
     convolver.buffer = makeImpulseResponse(
       context,
-      randomBetween(0.55, 0.85),
-      randomBetween(2.2, 3.1)
+      randomBetween(2.2, 4.85),
+      randomBetween(1.4, 3.1)
     );
 
     input.connect(preDelay);
