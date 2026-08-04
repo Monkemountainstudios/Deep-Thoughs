@@ -591,7 +591,7 @@
         pick("modal"),
         pick("verb"),
         ...buildNounPhrase(),
-        pickWord("connector", "and"),
+        pickWord("connector", "and", "or"),
         ...buildNounPhrase()
       ],
       mode: randomChoice(["story", "oracle"])
