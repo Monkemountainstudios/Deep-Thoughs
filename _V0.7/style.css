@@ -177,23 +177,3 @@ pre {
   color: #aaa59b;
   font: .75rem/1.6 "Courier New", Courier, monospace;
 }
-
-
-.rare-line {
-  padding: 3px 0;
-  color: #d9c9a4;
-  font-style: italic;
-}
-
-.rare-divider {
-  width: 62%;
-  height: 1px;
-  margin: 2px auto;
-  background: linear-gradient(
-    90deg,
-    transparent,
-    rgba(181, 139, 69, 0.52),
-    transparent
-  );
-  transition: opacity .35s ease;
-}

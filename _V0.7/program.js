@@ -2,9 +2,9 @@
   "use strict";
 
   // ------------------------------------------------------------
-  // DEEP THOUGHTS — V0.8
+  // DEEP THOUGS — V0.7
   // Prosody, dramatic pauses, stress, room presence,
-  // continuous thought, full live transcript, rare intrusions, CC toggle,
+  // continuous thought, full live transcript, CC toggle, tighter phrasing,
   // abandoned thoughts, and stitched plural suffixes.
   // ------------------------------------------------------------
 
@@ -46,9 +46,6 @@
   let currentLineWords = [];
   const completedTranscriptLines = [];
   const MAX_TRANSCRIPT_LINES = 10;
-
-  let nextRareAllowedAt = 0;
-  let lastRarePath = null;
 
   const PLURAL_DETERMINERS = new Set([
     "all", "two", "these", "those", "many", "several", "both"
@@ -122,7 +119,6 @@
     lamp.classList.add("active");
     clearCaptionTimers();
     resetTranscript();
-    scheduleNextRareWindow();
 
     thoughtLoop(loopToken);
   }
@@ -139,21 +135,9 @@
   async function thoughtLoop(token) {
     try {
       while (continuousThinking && token === loopToken) {
-        if (shouldPlayRareEvent()) {
-          await performRareEvent(token);
-
-          if (stopRequested || token !== loopToken) {
-            stopContinuousThinking();
-            return;
-          }
-
-          await waitSeconds(randomBetween(8.0, 15.0), token);
-          continue;
-        }
-
-        const performancePlan = buildPerformance();
+        const performance = buildPerformance();
         beginTranscriptLine();
-        await perform(performancePlan, token);
+        await perform(performance, token);
         finalizeTranscriptLine(chooseEndingMark());
 
         if (stopRequested || token !== loopToken) {
@@ -161,7 +145,8 @@
           return;
         }
 
-        await waitSeconds(chooseBetweenThoughtPause(), token);
+        const silence = chooseBetweenThoughtPause();
+        await waitSeconds(silence, token);
       }
     } catch (error) {
       console.error(error);
@@ -189,101 +174,6 @@
     if (roll < 0.08) return randomBetween(7.0, 14.0);
     if (roll < 0.32) return randomBetween(3.5, 6.5);
     return randomBetween(1.7, 3.8);
-  }
-
-  function scheduleNextRareWindow() {
-    nextRareAllowedAt =
-      performance.now() + randomBetween(10, 20) * 60 * 1000;
-  }
-
-  function shouldPlayRareEvent() {
-    const rarePool = vocabulary.rare;
-
-    if (!Array.isArray(rarePool) || rarePool.length === 0) {
-      return false;
-    }
-
-    if (performance.now() < nextRareAllowedAt) {
-      return false;
-    }
-
-    // Once the real-time cooldown has expired, each thought cycle
-    // gets a small chance to open the strange little door.
-    return Math.random() < 0.025;
-  }
-
-  async function performRareEvent(token) {
-    const entry = chooseRareEntry();
-
-    if (!entry) {
-      scheduleNextRareWindow();
-      return;
-    }
-
-    const buffer = buffers.get(entry.repositoryPath);
-
-    if (!buffer) {
-      scheduleNextRareWindow();
-      return;
-    }
-
-    lastRarePath = entry.repositoryPath;
-    scheduleNextRareWindow();
-
-    addRareTranscriptLine(rareCaptionFor(entry.word));
-
-    const start = audioContext.currentTime + randomBetween(0.2, 0.55);
-    const rate = randomBetween(0.992, 1.008);
-
-    const end = scheduleAudioBuffer(
-      buffer,
-      start,
-      rate,
-      randomBetween(0.66, 0.76),
-      randomBetween(0.09, 0.12)
-    );
-
-    await waitUntil(end + 0.2, token);
-  }
-
-  function chooseRareEntry() {
-    const pool = vocabulary.rare || [];
-    const choices = pool.filter(entry => entry.repositoryPath !== lastRarePath);
-    return randomChoice(choices.length ? choices : pool);
-  }
-
-  function rareCaptionFor(fileWord) {
-    const captions = {
-      mean: "I didn't mean to say that.",
-      say: "Why did I say that?",
-      ssh: "Sssh, someone is here.",
-      who: "Who are you?",
-      why: "Why aren't you answering?",
-      are: "Are you there?",
-      listening: "I think someone is listening to us!"
-    };
-
-    return captions[fileWord.toLowerCase()] || fileWord;
-  }
-
-  function addRareTranscriptLine(text) {
-    const dividerTop = document.createElement("div");
-    dividerTop.className = "rare-divider";
-
-    const line = document.createElement("p");
-    line.className = "transcript-line rare-line";
-    line.textContent = text;
-
-    const dividerBottom = document.createElement("div");
-    dividerBottom.className = "rare-divider";
-
-    transcript.querySelector(".transcript-placeholder")?.remove();
-    transcript.append(dividerTop, line, dividerBottom);
-
-    completedTranscriptLines.push(line);
-    trimTranscript();
-    updateTranscriptFading();
-    transcript.scrollTop = transcript.scrollHeight;
   }
 
   // ------------------------------------------------------------
@@ -409,11 +299,7 @@
     }
 
     if (no) {
-      events.push(makeWordEvent(no, {
-        role: "correction",
-        stress: 0.85,
-        breakAfter: true
-      }));
+      events.push(makeWordEvent(no, { role: "correction", stress: 0.85 }));
       events.push({ type: "pause", duration: randomBetween(1.2, 2.6) });
     }
 
@@ -519,8 +405,7 @@
       type: "word",
       entry,
       role: extra.role || "normal",
-      stress: extra.stress ?? 0.2,
-      breakAfter: Boolean(extra.breakAfter)
+      stress: extra.stress ?? 0.2
     };
   }
 
@@ -856,8 +741,7 @@
       scheduleCaptionWord(
         event.entry.word,
         start,
-        token,
-        event.breakAfter
+        token
       );
 
       const end = scheduleWord(
@@ -880,7 +764,7 @@
     await waitUntil(cursor + 0.15, token);
   }
 
-  function scheduleCaptionWord(word, startTime, token, breakAfter = false) {
+  function scheduleCaptionWord(word, startTime, token) {
     const delay = Math.max(
       0,
       (startTime - audioContext.currentTime) * 1000
@@ -889,11 +773,6 @@
     const timer = window.setTimeout(() => {
       if (token !== loopToken || !continuousThinking) return;
       appendTranscriptWord(word);
-
-      if (breakAfter) {
-        finalizeTranscriptLine(".");
-        beginTranscriptLine();
-      }
     }, delay);
 
     captionTimers.push(timer);
@@ -957,15 +836,7 @@
 
     while (lines.length > MAX_TRANSCRIPT_LINES) {
       const oldest = lines.shift();
-      if (!oldest) break;
-
-      const previous = oldest.previousElementSibling;
-      const next = oldest.nextElementSibling;
-
-      if (previous?.classList.contains("rare-divider")) previous.remove();
-      if (next?.classList.contains("rare-divider")) next.remove();
-
-      oldest.remove();
+      oldest?.remove();
 
       const index = completedTranscriptLines.indexOf(oldest);
       if (index >= 0) completedTranscriptLines.splice(index, 1);
@@ -980,21 +851,7 @@
 
     lines.forEach((line, index) => {
       const age = total - 1 - index;
-      const opacity = Math.max(0.28, 1 - age * 0.075);
-      line.style.opacity = String(opacity);
-
-      if (line.classList.contains("rare-line")) {
-        const previous = line.previousElementSibling;
-        const next = line.nextElementSibling;
-
-        if (previous?.classList.contains("rare-divider")) {
-          previous.style.opacity = String(opacity * 0.7);
-        }
-
-        if (next?.classList.contains("rare-divider")) {
-          next.style.opacity = String(opacity * 0.7);
-        }
-      }
+      line.style.opacity = String(Math.max(0.30, 1 - age * 0.075));
     });
   }
 
