@@ -2,9 +2,9 @@
   "use strict";
 
   // ------------------------------------------------------------
-  // DEEP THOUGS — V0.5
+  // DEEP THOUGS — V0.4
   // Prosody, dramatic pauses, stress, room presence,
-  // abandoned thoughts, and stitched plural suffixes.
+  // and occasional abandoned thoughts.
   // ------------------------------------------------------------
 
   const OWNER = "Monkemountainstudios";
@@ -35,10 +35,6 @@
   let vocabularyReady = false;
   let audioReady = false;
   let speaking = false;
-
-  const PLURAL_DETERMINERS = new Set([
-    "all", "two", "these", "those", "many", "several", "both"
-  ]);
 
   initialise();
 
@@ -448,28 +444,17 @@
 
   function buildNounPhrase(allowCompound = true) {
     const phrase = [];
-    let determiner = null;
 
-    if (Math.random() < 0.9) {
-      determiner = pick("determiner");
-      phrase.push(determiner);
-    }
+    if (Math.random() < 0.9) phrase.push(pick("determiner"));
 
     phrase.push(...buildAdjectiveList(0, adjectiveMaximum()));
-    phrase.push(buildNounForDeterminer(determiner));
+    phrase.push(pick("noun"));
 
     if (allowCompound && Math.random() < 0.17) {
       phrase.push(pickWord("connector", "and"));
-
-      let secondDeterminer = null;
-
-      if (Math.random() < 0.75) {
-        secondDeterminer = pick("determiner");
-        phrase.push(secondDeterminer);
-      }
-
+      if (Math.random() < 0.75) phrase.push(pick("determiner"));
       phrase.push(...buildAdjectiveList(0, adjectiveMaximum()));
-      phrase.push(buildNounForDeterminer(secondDeterminer));
+      phrase.push(pick("noun"));
     }
 
     if (Math.random() < 0.12) {
@@ -478,47 +463,6 @@
     }
 
     return phrase;
-  }
-
-  function buildNounForDeterminer(determiner) {
-    const noun = pick("noun");
-    const determinerWord = determiner?.word?.toLowerCase() || "";
-    const shouldPluralize = PLURAL_DETERMINERS.has(determinerWord);
-
-    if (!shouldPluralize) {
-      return noun;
-    }
-
-    return makePluralNoun(noun);
-  }
-
-  function makePluralNoun(noun) {
-    const suffixPool = vocabulary.suffix;
-
-    if (!Array.isArray(suffixPool) || suffixPool.length === 0) {
-      return noun;
-    }
-
-    const lower = noun.word.toLowerCase();
-    const naturallyWantsEs = /(s|x|z|ch|sh)$/.test(lower);
-
-    // Mostly sensible, occasionally confidently wrong.
-    const useEs = naturallyWantsEs
-      ? Math.random() < 0.84
-      : Math.random() < 0.10;
-
-    const wanted = useEs ? "es" : "s";
-    const suffix =
-      suffixPool.find(entry => entry.word.toLowerCase() === wanted) ||
-      randomChoice(suffixPool);
-
-    return {
-      ...noun,
-      word: `${noun.word}${suffix.word}`,
-      baseWord: noun.word,
-      suffixEntry: suffix,
-      isPluralized: true
-    };
   }
 
   function buildPredicateAdjectives() {
@@ -680,49 +624,9 @@
   }
 
   function scheduleWord(entry, startTime, playbackRate, gainValue, wetAmount) {
-    const baseBuffer = buffers.get(entry.repositoryPath);
-    if (!baseBuffer) return startTime;
+    const buffer = buffers.get(entry.repositoryPath);
+    if (!buffer) return startTime;
 
-    const baseEnd = scheduleAudioBuffer(
-      baseBuffer,
-      startTime,
-      playbackRate,
-      gainValue,
-      wetAmount
-    );
-
-    if (!entry.suffixEntry) {
-      return baseEnd;
-    }
-
-    const suffixBuffer = buffers.get(entry.suffixEntry.repositoryPath);
-
-    if (!suffixBuffer) {
-      return baseEnd;
-    }
-
-    // The suffix is part of the noun, not another spoken word.
-    // Start it just before the noun has completely finished.
-    const overlap = randomBetween(0.008, 0.025);
-    const suffixStart = Math.max(startTime + 0.02, baseEnd - overlap);
-    const suffixRate = playbackRate * randomBetween(0.995, 1.012);
-
-    return scheduleAudioBuffer(
-      suffixBuffer,
-      suffixStart,
-      suffixRate,
-      gainValue * randomBetween(0.82, 0.94),
-      wetAmount
-    );
-  }
-
-  function scheduleAudioBuffer(
-    buffer,
-    startTime,
-    playbackRate,
-    gainValue,
-    wetAmount
-  ) {
     const source = audioContext.createBufferSource();
     const envelope = audioContext.createGain();
     const wetSend = audioContext.createGain();
