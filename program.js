@@ -51,7 +51,7 @@
   let lastRarePath = null;
 
   const PLURAL_DETERMINERS = new Set([
-    "all", "two", "these", "those", "many", "several", "both"
+    "all", "two", "these", "those", "many", "several", "both", "three", "four", "heaps", 
   ]);
 
   initialise();
