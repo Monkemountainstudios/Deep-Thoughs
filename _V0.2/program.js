@@ -2,8 +2,8 @@
   "use strict";
 
   // ------------------------------------------------------------
-  // DEEP THOUGHS — V0.3
-  // Better sentence frames, phrase builders, and cleaner grammar.
+  // DEEP THOUGHS — PHASE 2
+  // Discover the vocabulary, generate one thought, and speak it.
   // ------------------------------------------------------------
 
   const OWNER = "Monkemountainstudios";
@@ -45,7 +45,7 @@
       await prepareAudio();
 
       const thought = buildThought();
-      thoughtText.textContent = formatThought(thought);
+      thoughtText.textContent = punctuate(displayWords(thought.words));
 
       statusText.textContent = "THINKING";
       lamp.classList.add("active");
@@ -81,6 +81,8 @@
       thoughtButton.textContent = "THINK A THOUGHT";
       thoughtButton.disabled = false;
       lamp.classList.add("active");
+
+      console.log("Deep Thoughs vocabulary:", vocabulary);
     } catch (error) {
       console.error(error);
       statusText.textContent = "LOAD FAILED";
@@ -172,82 +174,65 @@
   }
 
   // ------------------------------------------------------------
-  // THOUGHT ENGINE
+  // THOUGHT BUILDER
   // ------------------------------------------------------------
 
   function buildThought() {
     const builders = [
-      sentenceModal,
-      sentenceCopular,
-      sentenceCompoundSubject,
-      sentenceCompoundObject,
-      sentencePrepositional,
-      sentenceItWas,
-      sentenceFragment
+      thoughtModalJourney,
+      thoughtCompoundSubject,
+      thoughtPredicateAdjectives,
+      thoughtPrepositionalImage,
+      thoughtInterjection,
+      thoughtDeliberatelyOdd
     ];
 
     return randomChoice(builders)();
   }
 
-  function sentenceModal() {
+  function thoughtModalJourney() {
     return {
       words: [
         ...buildNounPhrase(),
         pick("modal"),
         ...buildAdverbList(),
         pick("verb"),
-        ...maybeObjectPhrase(),
-        ...maybePrepositionalPhrase()
+        pick("preposition"),
+        ...buildNounPhrase()
       ],
       style: "reflective"
     };
   }
 
-  function sentenceCopular() {
+  function thoughtCompoundSubject() {
     return {
       words: [
         ...buildNounPhrase(),
-        pickCopula(),
-        ...buildPredicateAdjectives()
-      ],
-      style: "solemn"
-    };
-  }
-
-  function sentenceCompoundSubject() {
-    return {
-      words: [
-        ...buildNounPhrase(false),
         pickWord("connector", "and"),
-        ...buildNounPhrase(false),
+        ...buildNounPhrase(),
         pick("modal"),
-        ...buildAdverbList(),
-        pick("verb"),
-        ...maybeObjectPhrase()
+        pick("verb")
       ],
       style: "measured"
     };
   }
 
-  function sentenceCompoundObject() {
+  function thoughtPredicateAdjectives() {
     return {
       words: [
         ...buildNounPhrase(),
-        pick("modal"),
-        pick("verb"),
-        ...buildNounPhrase(),
-        pickWord("connector", "and"),
-        ...buildNounPhrase()
+        pickAvailableWord("auxiliary", ["is", "was", "will"]),
+        ...buildAdjectiveList(1, 4, true)
       ],
-      style: "story"
+      style: "solemn"
     };
   }
 
-  function sentencePrepositional() {
+  function thoughtPrepositionalImage() {
     return {
       words: [
-        ...buildPrepositionalPhrase(),
-        { type: "pause", duration: randomBetween(0.35, 0.8) },
+        ...buildNounPhrase(),
+        pick("preposition"),
         ...buildNounPhrase(),
         pick("modal"),
         ...buildAdverbList(),
@@ -257,78 +242,52 @@
     };
   }
 
-  function sentenceItWas() {
-    const it = pickWord("pronoun", "it");
-    const was = pickAvailableWord("auxiliary", ["was", "is", "will"]);
-
+  function thoughtInterjection() {
     return {
       words: [
-        it,
-        was,
-        ...buildPredicateAdjectives(),
-        pickWord("connector", "and"),
-        ...buildPredicateAdjectives()
+        pick("interjection"),
+        { type: "pause", duration: randomBetween(0.5, 1.1) },
+        ...buildNounPhrase(),
+        pick("modal"),
+        pick("verb")
       ],
-      style: "measured"
+      style: "hesitant"
     };
   }
 
-  function sentenceFragment() {
+  function thoughtDeliberatelyOdd() {
     return {
       words: [
-        ...buildNounPhrase(),
-        { type: "pause", duration: randomBetween(0.55, 1.2) },
+        ...buildAdjectiveList(1, 3, true),
+        pick("noun"),
+        pick("connector"),
         ...buildAdverbList(1, 3),
-        pick("verb")
+        { type: "pause", duration: randomBetween(0.35, 0.8) },
+        pick("noun")
       ],
       style: "odd"
     };
   }
 
-  // ------------------------------------------------------------
-  // PHRASE BUILDERS
-  // ------------------------------------------------------------
-
-  function buildNounPhrase(allowCompound = true) {
+  function buildNounPhrase() {
     const phrase = [];
 
-    if (Math.random() < 0.9) {
+    if (Math.random() < 0.88) {
       phrase.push(pick("determiner"));
     }
 
     phrase.push(...buildAdjectiveList(0, adjectiveMaximum()));
     phrase.push(pick("noun"));
 
-    if (allowCompound && Math.random() < 0.17) {
+    // Occasionally pile on a second noun.
+    if (Math.random() < 0.18) {
       phrase.push(pickWord("connector", "and"));
-
-      if (Math.random() < 0.75) {
-        phrase.push(pick("determiner"));
-      }
-
+      if (Math.random() < 0.75) phrase.push(pick("determiner"));
       phrase.push(...buildAdjectiveList(0, adjectiveMaximum()));
       phrase.push(pick("noun"));
     }
 
-    if (Math.random() < 0.12) {
-      const ofWord = pickWord("preposition", "of");
-      phrase.push(ofWord);
-      phrase.push(...buildNounPhrase(false));
-    }
-
     return phrase;
-  }
-
-  function buildPredicateAdjectives() {
-    const adjectives = buildAdjectiveList(1, adjectiveMaximum(), true);
-
-    if (adjectives.length >= 2 && Math.random() < 0.7) {
-      const last = adjectives.pop();
-      adjectives.push(pickWord("connector", "and"));
-      adjectives.push(last);
-    }
-
-    return adjectives;
   }
 
   function buildAdjectiveList(minimum = 0, maximum = 3, force = false) {
@@ -344,47 +303,22 @@
     return uniquePicks("adverb", count);
   }
 
-  function buildPrepositionalPhrase() {
-    return [
-      pick("preposition"),
-      ...buildNounPhrase(false)
-    ];
-  }
-
-  function maybeObjectPhrase() {
-    return Math.random() < 0.72
-      ? buildNounPhrase()
-      : [];
-  }
-
-  function maybePrepositionalPhrase() {
-    return Math.random() < 0.42
-      ? buildPrepositionalPhrase()
-      : [];
-  }
-
   function adjectiveMaximum() {
     const roll = Math.random();
 
-    if (roll < 0.62) return 2;
-    if (roll < 0.9) return 4;
+    if (roll < 0.68) return 2;
+    if (roll < 0.92) return 4;
     return 7;
   }
 
   function weightedCount(minimum, maximum) {
     let count = minimum;
 
-    while (count < maximum && Math.random() < 0.46) {
+    while (count < maximum && Math.random() < 0.48) {
       count += 1;
     }
 
     return count;
-  }
-
-  function pickCopula() {
-    return pickAvailableWord("auxiliary", [
-      "is", "was", "are", "were", "seems", "becomes"
-    ]);
   }
 
   // ------------------------------------------------------------
@@ -427,7 +361,9 @@
       const response = await fetch(entry.audioUrl);
 
       if (!response.ok) {
-        throw new Error(`Could not load ${entry.repositoryPath}`);
+        throw new Error(
+          `Could not load ${entry.repositoryPath}`
+        );
       }
 
       const data = await response.arrayBuffer();
@@ -462,7 +398,9 @@
       const source = audioContext.createBufferSource();
       const gain = audioContext.createGain();
 
-      const rate = style.pitch * randomBetween(0.992, 1.008);
+      const rate =
+        style.pitch *
+        randomBetween(0.992, 1.008);
 
       source.buffer = buffer;
       source.playbackRate.value = rate;
@@ -484,7 +422,7 @@
       cursor = end + randomBetween(style.gapMin, style.gapMax);
     }
 
-    if (Math.random() < 0.5) {
+    if (Math.random() < 0.45) {
       cursor += randomBetween(0.25, 0.65);
       cursor = scheduleNaturalEnding(cursor);
     }
@@ -526,11 +464,11 @@
 
   function performanceStyle(styleName) {
     const styles = {
-      reflective: { gapMin: 0.13, gapMax: 0.28, pitch: 0.995, gain: 0.72 },
+      reflective: { gapMin: 0.14, gapMax: 0.29, pitch: 0.995, gain: 0.72 },
       measured:   { gapMin: 0.11, gapMax: 0.23, pitch: 1.000, gain: 0.72 },
       solemn:     { gapMin: 0.17, gapMax: 0.34, pitch: 0.985, gain: 0.70 },
       dreamlike:  { gapMin: 0.16, gapMax: 0.36, pitch: 1.008, gain: 0.66 },
-      story:      { gapMin: 0.10, gapMax: 0.24, pitch: 1.002, gain: 0.72 },
+      hesitant:   { gapMin: 0.20, gapMax: 0.46, pitch: 0.995, gain: 0.66 },
       odd:        { gapMin: 0.09, gapMax: 0.28, pitch: 1.012, gain: 0.72 }
     };
 
@@ -538,19 +476,8 @@
   }
 
   // ------------------------------------------------------------
-  // DISPLAY AND HELPERS
+  // SMALL HELPERS
   // ------------------------------------------------------------
-
-  function formatThought(thought) {
-    const text = thought.words
-      .filter(item => item.type !== "pause")
-      .map(item => item.word)
-      .join(" ");
-
-    if (!text) return "";
-
-    return text.charAt(0).toUpperCase() + text.slice(1) + ".";
-  }
 
   function pick(category) {
     const entries = vocabulary[category];
@@ -564,7 +491,6 @@
 
   function pickWord(category, preferredWord) {
     const entries = vocabulary[category] || [];
-
     return entries.find(entry =>
       entry.word.toLowerCase() === preferredWord.toLowerCase()
     ) || randomChoice(entries);
@@ -596,6 +522,18 @@
     return result;
   }
 
+  function displayWords(items) {
+    return items
+      .filter(item => item.type !== "pause")
+      .map(item => item.word)
+      .join(" ");
+  }
+
+  function punctuate(text) {
+    if (!text) return text;
+    return text.charAt(0).toUpperCase() + text.slice(1) + ".";
+  }
+
   function flattenVocabulary(object) {
     const entries = [];
 
@@ -616,7 +554,7 @@
       `Total audio files: ${totalFiles}`
     ];
 
-    return lines.join("\n");
+    return lines.join("\\n");
   }
 
   function countCategories(object, path = []) {

@@ -26,7 +26,7 @@ body {
 }
 
 .machine {
-  width: min(100%, 590px);
+  width: min(100%, 560px);
   padding: 30px 26px;
   border: 1px solid var(--border);
   background: rgba(20, 20, 20, 0.96);
@@ -106,7 +106,7 @@ button:disabled {
 .thought-panel {
   display: grid;
   place-items: center;
-  min-height: 170px;
+  min-height: 150px;
   margin-top: 25px;
   padding: 24px 18px;
   border-top: 1px solid #34322f;
