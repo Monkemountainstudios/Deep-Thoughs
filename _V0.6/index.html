@@ -9,22 +9,17 @@
 <body>
   <main class="machine" aria-labelledby="title">
     <h1 id="title">DEEP THOUGHS</h1>
-    <p class="subtitle">Generative Poetry Engine v0.7</p>
+    <p class="subtitle">Generative Poetry Engine v0.6</p>
 
     <div class="status" aria-live="polite">
       <span id="lamp" class="lamp"></span>
       <span id="statusText">READING THE ARCHIVE</span>
     </div>
 
-    <div class="controls">
-      <button id="thoughtButton" type="button" disabled>PLEASE WAIT</button>
-      <button id="ccButton" type="button" disabled aria-pressed="true">CC: ON</button>
-    </div>
+    <button id="thoughtButton" type="button" disabled>PLEASE WAIT</button>
 
-    <section class="thought-panel" aria-label="Live transcript">
-      <div id="transcript" class="transcript" aria-live="polite">
-        <p class="transcript-placeholder">The machine is gathering words.</p>
-      </div>
+    <section class="thought-panel" aria-live="polite">
+      <p id="thoughtText" aria-label="Live thought buffer">The machine is gathering words.</p>
     </section>
 
     <details class="report">

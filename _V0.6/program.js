@@ -2,9 +2,9 @@
   "use strict";
 
   // ------------------------------------------------------------
-  // DEEP THOUGS — V0.7
+  // DEEP THOUGS — V0.6
   // Prosody, dramatic pauses, stress, room presence,
-  // continuous thought, full live transcript, CC toggle, tighter phrasing,
+  // continuous thought, live rolling captions, tighter phrasing,
   // abandoned thoughts, and stitched plural suffixes.
   // ------------------------------------------------------------
 
@@ -21,8 +21,7 @@
     `https://raw.githubusercontent.com/${OWNER}/${REPOSITORY}/${BRANCH}/`;
 
   const thoughtButton = document.querySelector("#thoughtButton");
-  const transcript = document.querySelector("#transcript");
-  const ccButton = document.querySelector("#ccButton");
+  const thoughtText = document.querySelector("#thoughtText");
   const statusText = document.querySelector("#statusText");
   const reportText = document.querySelector("#reportText");
   const lamp = document.querySelector("#lamp");
@@ -41,11 +40,7 @@
   let stopRequested = false;
   let loopToken = 0;
   let captionTimers = [];
-  let captionsEnabled = true;
-  let currentTranscriptLine = null;
-  let currentLineWords = [];
-  const completedTranscriptLines = [];
-  const MAX_TRANSCRIPT_LINES = 10;
+  const captionWords = [];
 
   const PLURAL_DETERMINERS = new Set([
     "all", "two", "these", "those", "many", "several", "both"
@@ -66,18 +61,12 @@
     } catch (error) {
       console.error(error);
       statusText.textContent = "THOUGHT FAILED";
-      setTranscriptPlaceholder(error.message);
+      thoughtText.textContent = error.message;
+      thoughtText.classList.remove("idle");
       thoughtButton.textContent = "TRY AGAIN";
       thoughtButton.disabled = false;
       lamp.classList.remove("active");
     }
-  });
-
-  ccButton.addEventListener("click", () => {
-    captionsEnabled = !captionsEnabled;
-    ccButton.textContent = captionsEnabled ? "CC: ON" : "CC: OFF";
-    ccButton.setAttribute("aria-pressed", String(captionsEnabled));
-    transcript.classList.toggle("cc-off", !captionsEnabled);
   });
 
   async function initialise() {
@@ -90,19 +79,18 @@
       vocabularyReady = true;
       reportText.textContent = makeVocabularyReport(audioFiles.length);
       statusText.textContent = "VOCABULARY READY";
-      setTranscriptPlaceholder("Awaiting a thought.");
+      thoughtText.textContent = "Awaiting a thought.";
+      thoughtText.classList.add("idle");
       thoughtButton.textContent = "START THINKING";
       thoughtButton.disabled = false;
-      ccButton.disabled = false;
       lamp.classList.add("active");
     } catch (error) {
       console.error(error);
       statusText.textContent = "LOAD FAILED";
-      setTranscriptPlaceholder(error.message);
+      thoughtText.textContent = error.message;
       reportText.textContent = "The archive resisted inspection.";
       thoughtButton.textContent = "RELOAD PAGE";
       thoughtButton.disabled = false;
-      ccButton.disabled = true;
       thoughtButton.onclick = () => window.location.reload();
     }
   }
@@ -117,8 +105,11 @@
     thoughtButton.disabled = false;
     statusText.textContent = "THINKING";
     lamp.classList.add("active");
+    thoughtText.classList.remove("idle");
+
     clearCaptionTimers();
-    resetTranscript();
+    captionWords.length = 0;
+    thoughtText.textContent = "";
 
     thoughtLoop(loopToken);
   }
@@ -136,9 +127,7 @@
     try {
       while (continuousThinking && token === loopToken) {
         const performance = buildPerformance();
-        beginTranscriptLine();
         await perform(performance, token);
-        finalizeTranscriptLine(chooseEndingMark());
 
         if (stopRequested || token !== loopToken) {
           stopContinuousThinking();
@@ -152,7 +141,7 @@
       console.error(error);
       stopContinuousThinking();
       statusText.textContent = "THOUGHT FAILED";
-      setTranscriptPlaceholder(error.message);
+      thoughtText.textContent = error.message;
     }
   }
 
@@ -690,7 +679,7 @@
     if (audioReady) return;
 
     statusText.textContent = "PREPARING THE VOICE";
-    setTranscriptPlaceholder("Loading recorded words...");
+    thoughtText.textContent = "Loading recorded words...";
     thoughtButton.textContent = "LOADING VOICE";
 
     const entries = flattenVocabulary(vocabulary);
@@ -708,9 +697,8 @@
       buffers.set(entry.repositoryPath, buffer);
 
       loaded += 1;
-      setTranscriptPlaceholder(
-        `Loading recorded words: ${loaded}/${entries.length}`
-      );
+      thoughtText.textContent =
+        `Loading recorded words: ${loaded}/${entries.length}`;
     }));
 
     audioReady = true;
@@ -772,103 +760,26 @@
 
     const timer = window.setTimeout(() => {
       if (token !== loopToken || !continuousThinking) return;
-      appendTranscriptWord(word);
+
+      captionWords.push(word);
+
+      const maximumWords = captionLimit();
+      while (captionWords.length > maximumWords) {
+        captionWords.shift();
+      }
+
+      thoughtText.textContent = captionWords.join(" ");
     }, delay);
 
     captionTimers.push(timer);
   }
 
-  function beginTranscriptLine() {
-    currentLineWords = [];
+  function captionLimit() {
+    const width = window.innerWidth;
 
-    const line = document.createElement("p");
-    line.className = "transcript-line current";
-    line.textContent = "";
-
-    transcript.querySelector(".transcript-placeholder")?.remove();
-    transcript.appendChild(line);
-    currentTranscriptLine = line;
-
-    trimTranscript();
-  }
-
-  function appendTranscriptWord(word) {
-    if (!currentTranscriptLine) {
-      beginTranscriptLine();
-    }
-
-    currentLineWords.push(word);
-    currentTranscriptLine.textContent = currentLineWords.join(" ");
-    transcript.scrollTop = transcript.scrollHeight;
-  }
-
-  function finalizeTranscriptLine(endingMark = ".") {
-    if (!currentTranscriptLine) return;
-
-    const baseText = currentLineWords.join(" ").trim();
-
-    if (baseText) {
-      currentTranscriptLine.textContent = `${baseText}${endingMark}`;
-      currentTranscriptLine.classList.remove("current");
-      completedTranscriptLines.push(currentTranscriptLine);
-    } else {
-      currentTranscriptLine.remove();
-    }
-
-    currentTranscriptLine = null;
-    currentLineWords = [];
-
-    updateTranscriptFading();
-    trimTranscript();
-  }
-
-  function chooseEndingMark() {
-    const roll = Math.random();
-
-    if (roll < 0.73) return ".";
-    if (roll < 0.90) return "...";
-    if (roll < 0.97) return "?";
-    return " —";
-  }
-
-  function trimTranscript() {
-    const lines = [...transcript.querySelectorAll(".transcript-line")];
-
-    while (lines.length > MAX_TRANSCRIPT_LINES) {
-      const oldest = lines.shift();
-      oldest?.remove();
-
-      const index = completedTranscriptLines.indexOf(oldest);
-      if (index >= 0) completedTranscriptLines.splice(index, 1);
-    }
-
-    updateTranscriptFading();
-  }
-
-  function updateTranscriptFading() {
-    const lines = [...transcript.querySelectorAll(".transcript-line")];
-    const total = lines.length;
-
-    lines.forEach((line, index) => {
-      const age = total - 1 - index;
-      line.style.opacity = String(Math.max(0.30, 1 - age * 0.075));
-    });
-  }
-
-  function resetTranscript() {
-    transcript.innerHTML = "";
-    completedTranscriptLines.length = 0;
-    currentTranscriptLine = null;
-    currentLineWords = [];
-  }
-
-  function setTranscriptPlaceholder(message) {
-    resetTranscript();
-
-    const placeholder = document.createElement("p");
-    placeholder.className = "transcript-placeholder";
-    placeholder.textContent = message;
-    transcript.appendChild(placeholder);
+    if (width < 430) return 6;
+    if (width < 700) return 8;
+    return 10;
   }
 
   function clearCaptionTimers() {

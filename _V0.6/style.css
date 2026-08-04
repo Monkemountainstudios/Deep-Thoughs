@@ -76,16 +76,9 @@ h1 {
   box-shadow: 0 0 7px rgba(181,139,69,.8), 0 0 18px rgba(181,139,69,.3);
 }
 
-.controls {
-  display: flex;
-  justify-content: center;
-  gap: 10px;
-  flex-wrap: wrap;
-}
-
 button {
   display: block;
-  min-width: 190px;
+  min-width: 220px;
   margin: 0 auto;
   padding: 11px 16px;
   border: 1px solid #8a857b;
@@ -120,42 +113,23 @@ button:disabled {
   border-bottom: 1px solid #34322f;
 }
 
-.transcript {
+#thoughtText {
   width: 100%;
-  min-height: 255px;
-  max-height: 390px;
-  overflow: hidden;
-  display: flex;
-  flex-direction: column;
-  justify-content: flex-end;
-  gap: 10px;
-}
-
-.transcript-line {
   margin: 0;
-  color: #ddd7cb;
-  font-size: clamp(.88rem, 2.8vw, 1.12rem);
-  line-height: 1.55;
-  letter-spacing: .035em;
-  overflow-wrap: anywhere;
-  transition: opacity .35s ease, color .35s ease;
-}
-
-.transcript-line.current {
-  color: #f0eadf;
-}
-
-.transcript-placeholder {
-  margin: 0;
-  color: #77736a;
   text-align: center;
+  color: #ddd7cb;
+  font-size: clamp(.95rem, 3.2vw, 1.25rem);
+  line-height: 1.75;
+  letter-spacing: .045em;
+  overflow-wrap: anywhere;
+  transition: opacity .25s ease;
+}
+
+#thoughtText.idle {
+  color: #77736a;
   font-size: .78rem;
   letter-spacing: .1em;
   text-transform: uppercase;
-}
-
-.transcript.cc-off {
-  visibility: hidden;
 }
 
 .report {
