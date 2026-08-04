@@ -606,7 +606,11 @@
         ...maybeFunctionAdverb(),
         pick("verb"),
         ...buildNounPhrase(),
+<<<<<<< HEAD
         pickAvailableWord("connector", ["and", "or"]),
+=======
+        pickWord("connector", "and", "or"),
+>>>>>>> 14e168c4a5b7ca7e0d78606804ff3ae2a018a0fb
         ...buildNounPhrase()
       ],
       mode: randomChoice(["story", "oracle"])
@@ -747,7 +751,12 @@
   }
 
   function sentenceItWas() {
+<<<<<<< HEAD
     const subject = pickAvailableWord("pronoun", ["it", "he", "she"]);
+=======
+    const it = pickWord("pronoun", "it", "he", "she");
+    const was = pickAvailableWord("auxiliary", ["was", "is", "will"]);
+>>>>>>> 14e168c4a5b7ca7e0d78606804ff3ae2a018a0fb
 
     return {
       words: [
