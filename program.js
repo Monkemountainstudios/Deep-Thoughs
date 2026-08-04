@@ -536,25 +536,27 @@
       sentenceCompoundObject,
       sentencePrepositional,
       sentenceItWas,
+      sentencePronounModal,
       sentenceFragment
     ];
 
     return randomChoice(builders)();
   }
 
-  function sentenceModal() {
-    return {
-      words: [
-        ...buildNounPhrase(),
-        pick("modal"),
-        ...buildAdverbList(),
-        pick("verb"),
-        ...maybeObjectPhrase(),
-        ...maybePrepositionalPhrase()
-      ],
-      mode: randomChoice(["reflective", "oracle", "measured"])
-    };
-  }
+ function sentenceModal() {
+  return {
+    words: [
+      ...buildNounPhrase(),
+      pick("modal"),
+      ...maybeNot(),
+      ...buildAdverbList(),
+      pick("verb"),
+      ...maybeObjectPhrase(),
+      ...maybePrepositionalPhrase()
+    ],
+    mode: randomChoice(["reflective", "oracle", "measured"])
+  };
+}
 
   function sentenceCopular() {
     return {
@@ -595,6 +597,23 @@
       mode: randomChoice(["story", "oracle"])
     };
   }
+  function sentencePronounModal() {
+  const subject = pickAvailableWord("pronoun", [
+    "i", "he", "she", "it", "we", "they"
+  ]);
+
+  return {
+    words: [
+      subject,
+      pick("modal"),
+      ...buildAdverbList(),
+      pick("verb"),
+      ...maybeObjectPhrase(),
+      ...maybePrepositionalPhrase()
+    ],
+    mode: randomChoice(["reflective", "oracle", "measured"])
+  };
+}
 
   function sentencePrepositional() {
     return {
@@ -744,7 +763,11 @@
   function maybeObjectPhrase() {
     return Math.random() < 0.72 ? buildNounPhrase() : [];
   }
-
+function maybeNot(chance = 0.22) {
+  return Math.random() < chance
+    ? [pickWord("auxiliary", "not")]
+    : [];
+}
   function maybePrepositionalPhrase() {
     return Math.random() < 0.42 ? buildPrepositionalPhrase() : [];
   }
