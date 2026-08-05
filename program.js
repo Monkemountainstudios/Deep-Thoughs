@@ -273,6 +273,7 @@
       mean: "I didn't mean to say that.",
       say: "Why did I say that?",
       ssh: "Sssh, someone is here.",
+      gosh: "Gosh! I'm soo drunk right now!",
       who: "Who are you?",
       why: "Why aren't you answering?",
       are: "Are you there?",
@@ -406,7 +407,7 @@
     const abandoned = falseWords.slice(0, cutoff);
     const correction = buildThought();
 
-    const eh = findAnyWord(["eh", "eeh", "um", "ahem", "bah"]);
+    const eh = findAnyWord(["ah", "amen", "hmm", "mmmm", "oh", "perhaps", "well", "yes",]);
     const no = findAnyWord(["no"]);
 
     const events = [];
@@ -774,7 +775,8 @@
           ...maybeNot(0.18),
           ...maybeFunctionAdverb(),
           pick("verb"),
-          ...maybeObjectPhrase()
+          ...maybeObjectPhrase(),
+		  ...maybeFunctionInterjection(0.1)
         ],
         mode: randomChoice(["oracle", "reflective"]),
         endingMark: "?"
@@ -1015,6 +1017,13 @@
 
     return [pickAvailableWord("auxiliary", [
       "now", "once", "only", "here", "there"
+    ])];
+  }
+  function maybeFunctionInterjection(chance = 0.22) {
+    if (Math.random() >= chance) return [];
+
+    return [pickAvailableWord("interjection", [
+      "ah", "hmm", "mmmm", "well", "oh"
     ])];
   }
 
@@ -1431,7 +1440,7 @@
       noun: [0.025, 0.035],
       adjective: [0.00, 0.018],
       adverb: [0.025, 0.035],
-      interjection: [0.30, 0.18],
+      interjection: [0.030, 0.18],
       final: [0.34, 0.20],
       "abandoned-final": [0.58, 0.30],
       correction: [0.42, 0.22],
