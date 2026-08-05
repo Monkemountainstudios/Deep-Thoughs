@@ -713,6 +713,7 @@
 
     return {
       words: [
+		...maybeFunctionInterjection(0.1)
         subject,
         pick("modal"),
         ...maybeNot(0.28),
@@ -1023,7 +1024,7 @@
     if (Math.random() >= chance) return [];
 
     return [pickAvailableWord("interjection", [
-      "ah", "hmm", "mmmm", "well", "oh"
+      "ah", "hmm", "mmmm", "well", "oh", "perhaps", "please", "yes", "amen"
     ])];
   }
 
