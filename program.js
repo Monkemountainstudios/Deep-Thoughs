@@ -63,11 +63,11 @@
   // A flat audio/archaic folder is supported. Known words receive a slightly
   // more grammatical role; unknown additions can still appear as rare openers.
   const ARCHAIC_OPENERS = new Set([
-    "lo", "behold", "alas", "hark", "marry"
+    "lo", "behold", "cometh", "yolo", "hence"
   ]);
 
   const ARCHAIC_ADVERBS = new Set([
-    "verily", "perchance", "mayhaps", "henceforth", "forsooth"
+    "verily", "thence", "betwixt", "hence", "thence", "lest", "doth"
   ]);
 
   initialise();
