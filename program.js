@@ -407,7 +407,17 @@
     const abandoned = falseWords.slice(0, cutoff);
     const correction = buildThought();
 
-    const eh = findAnyWord(["ah", "amen", "hmm", "mmmm", "oh", "perhaps", "well", "yes",]);
+    const eh = pickAvailableWord("interjection", [
+  "ah",
+  "amen",
+  "hmm",
+  "mmmm",
+  "oh",
+  "perhaps",
+  "please",
+  "well",
+  "yes"
+]);
     const no = findAnyWord(["no"]);
 
     const events = [];
@@ -713,7 +723,7 @@
 
     return {
       words: [
-		...maybeFunctionInterjection(0.1)
+		...maybeFunctionInterjection(0.1),
         subject,
         pick("modal"),
         ...maybeNot(0.28),
@@ -777,7 +787,7 @@
           ...maybeFunctionAdverb(),
           pick("verb"),
           ...maybeObjectPhrase(),
-		  ...maybeFunctionInterjection(0.1)
+		  ...maybeFunctionInterjection(0.1),
         ],
         mode: randomChoice(["oracle", "reflective"]),
         endingMark: "?"
@@ -954,12 +964,26 @@
     }
 
     const lower = noun.word.toLowerCase();
+	const neverPluralize = new Set([
+  "music",
+  "bippies"
+]);
+
+if (neverPluralize.has(lower)) {
+  return noun;
+}
+
+const neverUseEs = new Set([
+  "baguette"
+]);
     const naturallyWantsEs = /(s|x|z|ch|sh)$/.test(lower);
 
     // Mostly sensible, occasionally confidently wrong.
-    const useEs = naturallyWantsEs
-      ? Math.random() < 0.84
-      : Math.random() < 0.10;
+   const useEs = neverUseEs.has(lower)
+  ? false
+  : naturallyWantsEs
+    ? Math.random() < 0.84
+    : Math.random() < 0.10;
 
     const wanted = useEs ? "es" : "s";
     const suffix =
@@ -1571,11 +1595,11 @@
     lowpass.type = "lowpass";
     lowpass.frequency.value = randomBetween(3900, 6900);
 
-    wet.gain.value = randomBetween(0.29, 0.6);
+    wet.gain.value = randomBetween(0.29, 0.5);
 
     convolver.buffer = makeImpulseResponse(
       context,
-      randomBetween(2.2, 4.85),
+      randomBetween(2.2, 3.85),
       randomBetween(1.4, 3.1)
     );
 
