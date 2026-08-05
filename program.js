@@ -51,7 +51,7 @@
   let lastRarePath = null;
 
   const PLURAL_DETERMINERS = new Set([
-    "all", "two", "these", "those", "many", "several", "both"
+    "all", "two", "these", "those", "many", "several", "both", "three", "four", "heaps", 
   ]);
 
   initialise();
@@ -154,7 +154,7 @@
         const performancePlan = buildPerformance();
         beginTranscriptLine();
         await perform(performancePlan, token);
-        finalizeTranscriptLine(chooseEndingMark());
+        finalizeTranscriptLine(performancePlan.endingMark || chooseEndingMark());
 
         if (stopRequested || token !== loopToken) {
           stopContinuousThinking();
@@ -374,7 +374,8 @@
     return {
       displayThought: thought,
       events: annotateThought(thought),
-      mode: thought.mode
+      mode: thought.mode,
+      endingMark: thought.endingMark
     };
   }
 
@@ -424,6 +425,7 @@
       displayThought: correction,
       events,
       mode: "self-correcting",
+      endingMark: correction.endingMark,
       abandonedWords: abandoned.map(item => item.word)
     };
   }
@@ -529,17 +531,24 @@
   // ------------------------------------------------------------
 
   function buildThought() {
-    const builders = [
-      sentenceModal,
-      sentenceCopular,
-      sentenceCompoundSubject,
-      sentenceCompoundObject,
-      sentencePrepositional,
-      sentenceItWas,
-      sentenceFragment
-    ];
+    // The original sentence forms remain dominant. The newer forms appear
+    // often enough to be noticed, but not often enough to civilise the oracle.
+    const builder = weightedChoice([
+      [sentenceModal, 18],
+      [sentenceCopular, 15],
+      [sentenceCompoundSubject, 12],
+      [sentenceCompoundObject, 12],
+      [sentencePrepositional, 11],
+      [sentenceItWas, 9],
+      [sentenceFragment, 11],
+      [sentencePronounModal, 7],
+      [sentencePronounState, 5],
+      [sentencePronounHaveBeen, 4],
+      [sentenceQuestion, 5],
+      [sentenceExistential, 3]
+    ]);
 
-    return randomChoice(builders)();
+    return builder();
   }
 
   function sentenceModal() {
@@ -547,6 +556,8 @@
       words: [
         ...buildNounPhrase(),
         pick("modal"),
+        ...maybeNot(),
+        ...maybeFunctionAdverb(),
         ...buildAdverbList(),
         pick("verb"),
         ...maybeObjectPhrase(),
@@ -561,6 +572,8 @@
       words: [
         ...buildNounPhrase(),
         pickCopula(),
+        ...maybeNot(0.15),
+        ...maybeDegreeWord(),
         ...buildPredicateAdjectives()
       ],
       mode: randomChoice(["solemn", "reflective", "certain"])
@@ -574,6 +587,8 @@
         pickWord("connector", "and"),
         ...buildNounPhrase(false),
         pick("modal"),
+        ...maybeNot(0.18),
+        ...maybeFunctionAdverb(),
         ...buildAdverbList(),
         pick("verb"),
         ...maybeObjectPhrase()
@@ -587,12 +602,131 @@
       words: [
         ...buildNounPhrase(),
         pick("modal"),
+        ...maybeNot(0.18),
+        ...maybeFunctionAdverb(),
         pick("verb"),
         ...buildNounPhrase(),
-        pickWord("connector", "and"),
+        pickAvailableWord("connector", ["and", "or"]),
         ...buildNounPhrase()
       ],
       mode: randomChoice(["story", "oracle"])
+    };
+  }
+
+  function sentencePronounModal() {
+    const subject = pickAvailableWord("pronoun", [
+      "i", "he", "she", "it", "we", "they"
+    ]);
+
+    return {
+      words: [
+        subject,
+        pick("modal"),
+        ...maybeNot(0.28),
+        ...maybeFunctionAdverb(0.35),
+        ...buildAdverbList(),
+        pick("verb"),
+        ...maybeObjectPhrase(),
+        ...maybePrepositionalPhrase()
+      ],
+      mode: randomChoice(["reflective", "oracle", "measured"])
+    };
+  }
+
+  function sentencePronounState() {
+    const subject = pickAvailableWord("pronoun", [
+      "i", "he", "she", "it", "we", "they"
+    ]);
+
+    return {
+      words: [
+        subject,
+        pickPronounCopula(subject),
+        ...maybeNot(0.24),
+        ...maybeDegreeWord(0.32),
+        ...buildPredicateAdjectives()
+      ],
+      mode: randomChoice(["solemn", "reflective", "certain"])
+    };
+  }
+
+  function sentencePronounHaveBeen() {
+    const subject = pickAvailableWord("pronoun", [
+      "i", "he", "she", "it", "we", "they"
+    ]);
+
+    return {
+      words: [
+        subject,
+        pickPronounHave(subject),
+        ...maybeNot(0.20),
+        pickWord("auxiliary", "been"),
+        ...maybeFunctionAdverb(0.30),
+        ...buildPredicateAdjectives()
+      ],
+      mode: randomChoice(["reflective", "solemn", "dreamlike"])
+    };
+  }
+
+  function sentenceQuestion() {
+    const question = pickAvailableWord("auxiliary", [
+      "why", "where", "when", "who", "what"
+    ]);
+    const word = question.word.toLowerCase();
+
+    if (word === "who") {
+      return {
+        words: [
+          question,
+          pick("modal"),
+          ...maybeNot(0.18),
+          ...maybeFunctionAdverb(),
+          pick("verb"),
+          ...maybeObjectPhrase()
+        ],
+        mode: randomChoice(["oracle", "reflective"]),
+        endingMark: "?"
+      };
+    }
+
+    if (word === "what") {
+      return {
+        words: [
+          question,
+          pickAvailableWord("auxiliary", ["is", "was"]),
+          ...maybeNot(0.12),
+          ...buildNounPhrase()
+        ],
+        mode: randomChoice(["solemn", "odd"]),
+        endingMark: "?"
+      };
+    }
+
+    return {
+      words: [
+        question,
+        pickAvailableWord("auxiliary", ["did", "does", "do"]),
+        ...buildNounPhrase(),
+        ...maybeNot(0.14),
+        pick("verb"),
+        ...maybeObjectPhrase()
+      ],
+      mode: randomChoice(["oracle", "dreamlike", "odd"]),
+      endingMark: "?"
+    };
+  }
+
+  function sentenceExistential() {
+    const place = pickAvailableWord("auxiliary", ["here", "there"]);
+
+    return {
+      words: [
+        place,
+        pickAvailableWord("auxiliary", ["is", "was", "are", "were"]),
+        ...maybeNot(0.12),
+        ...buildNounPhrase()
+      ],
+      mode: randomChoice(["solemn", "dreamlike"])
     };
   }
 
@@ -603,6 +737,8 @@
         { type: "pause", duration: randomBetween(0.35, 0.8) },
         ...buildNounPhrase(),
         pick("modal"),
+        ...maybeNot(0.16),
+        ...maybeFunctionAdverb(),
         ...buildAdverbList(),
         pick("verb")
       ],
@@ -611,13 +747,14 @@
   }
 
   function sentenceItWas() {
-    const it = pickWord("pronoun", "it");
-    const was = pickAvailableWord("auxiliary", ["was", "is", "will"]);
+    const subject = pickAvailableWord("pronoun", ["it", "he", "she"]);
 
     return {
       words: [
-        it,
-        was,
+        subject,
+        pickPronounCopula(subject),
+        ...maybeNot(0.18),
+        ...maybeDegreeWord(),
         ...buildPredicateAdjectives(),
         pickWord("connector", "and"),
         ...buildPredicateAdjectives()
@@ -631,6 +768,7 @@
       words: [
         ...buildNounPhrase(),
         { type: "pause", duration: randomBetween(0.55, 1.2) },
+        ...maybeFunctionAdverb(0.30),
         ...buildAdverbList(1, 3),
         pick("verb")
       ],
@@ -745,6 +883,28 @@
     return Math.random() < 0.72 ? buildNounPhrase() : [];
   }
 
+  function maybeNot(chance = 0.22) {
+    return Math.random() < chance
+      ? [pickWord("auxiliary", "not")]
+      : [];
+  }
+
+  function maybeFunctionAdverb(chance = 0.22) {
+    if (Math.random() >= chance) return [];
+
+    return [pickAvailableWord("auxiliary", [
+      "now", "once", "only", "here", "there"
+    ])];
+  }
+
+  function maybeDegreeWord(chance = 0.22) {
+    if (Math.random() >= chance) return [];
+
+    return [pickAvailableWord("auxiliary", [
+      "very", "more", "less", "only"
+    ])];
+  }
+
   function maybePrepositionalPhrase() {
     return Math.random() < 0.42 ? buildPrepositionalPhrase() : [];
   }
@@ -764,8 +924,43 @@
 
   function pickCopula() {
     return pickAvailableWord("auxiliary", [
-      "is", "was", "are", "were", "seems", "becomes"
+      "is", "was", "are", "were"
     ]);
+  }
+
+  function pickPronounCopula(subject) {
+    const word = subject.word.toLowerCase();
+    const usePast = Math.random() < 0.45;
+
+    if (usePast) {
+      return pickAvailableWord("auxiliary",
+        ["we", "they"].includes(word) ? ["were"] : ["was"]
+      );
+    }
+
+    if (word === "i") {
+      return pickAvailableWord("auxiliary", ["am"]);
+    }
+
+    if (["we", "they"].includes(word)) {
+      return pickAvailableWord("auxiliary", ["are"]);
+    }
+
+    return pickAvailableWord("auxiliary", ["is"]);
+  }
+
+  function pickPronounHave(subject) {
+    const word = subject.word.toLowerCase();
+
+    if (Math.random() < 0.38) {
+      return pickAvailableWord("auxiliary", ["had"]);
+    }
+
+    if (["he", "she", "it"].includes(word)) {
+      return pickAvailableWord("auxiliary", ["has"]);
+    }
+
+    return pickAvailableWord("auxiliary", ["have"]);
   }
 
   // ------------------------------------------------------------
@@ -1158,47 +1353,47 @@
     const styles = {
       reflective: {
         wordGap: 0.024, wordGapVariation: 0.016,
-        basePitch: 0.995, gain: 0.69, wet: 0.085,
+        basePitch: 0.995, gain: 0.69, wet: 0.3,
         cadence: "falling", dramaticPauseChance: 0.08, breathChance: 0.45
       },
       oracle: {
         wordGap: 0.030, wordGapVariation: 0.020,
-        basePitch: 0.988, gain: 0.72, wet: 0.10,
+        basePitch: 0.988, gain: 0.72, wet: 0.350,
         cadence: "hill", dramaticPauseChance: 0.18, breathChance: 0.42
       },
       measured: {
         wordGap: 0.020, wordGapVariation: 0.014,
-        basePitch: 1.0, gain: 0.70, wet: 0.075,
+        basePitch: 1.0, gain: 0.70, wet: 0.25,
         cadence: "falling", dramaticPauseChance: 0.05, breathChance: 0.32
       },
       solemn: {
         wordGap: 0.034, wordGapVariation: 0.022,
-        basePitch: 0.982, gain: 0.68, wet: 0.10,
+        basePitch: 0.982, gain: 0.68, wet: 0.25,
         cadence: "falling", dramaticPauseChance: 0.13, breathChance: 0.52
       },
       certain: {
         wordGap: 0.016, wordGapVariation: 0.012,
-        basePitch: 1.006, gain: 0.74, wet: 0.07,
+        basePitch: 1.006, gain: 0.74, wet: 0.27,
         cadence: "falling", dramaticPauseChance: 0.03, breathChance: 0.24
       },
       story: {
         wordGap: 0.020, wordGapVariation: 0.016,
-        basePitch: 1.002, gain: 0.70, wet: 0.075,
+        basePitch: 1.002, gain: 0.70, wet: 0.2,
         cadence: "wandering", dramaticPauseChance: 0.06, breathChance: 0.34
       },
       dreamlike: {
         wordGap: 0.032, wordGapVariation: 0.024,
-        basePitch: 1.006, gain: 0.64, wet: 0.11,
+        basePitch: 1.006, gain: 0.64, wet: 0.5,
         cadence: "wandering", dramaticPauseChance: 0.12, breathChance: 0.58
       },
       odd: {
         wordGap: 0.022, wordGapVariation: 0.020,
-        basePitch: 1.012, gain: 0.70, wet: 0.08,
+        basePitch: 1.012, gain: 0.70, wet: 0.35,
         cadence: "rising", dramaticPauseChance: 0.10, breathChance: 0.40
       },
       "self-correcting": {
         wordGap: 0.028, wordGapVariation: 0.022,
-        basePitch: 0.997, gain: 0.67, wet: 0.09,
+        basePitch: 0.997, gain: 0.67, wet: 0.54,
         cadence: "wandering", dramaticPauseChance: 0.08, breathChance: 0.55
       }
     };
@@ -1237,20 +1432,20 @@
     const lowpass = context.createBiquadFilter();
     const wet = context.createGain();
 
-    preDelay.delayTime.value = randomBetween(0.009, 0.017);
+    preDelay.delayTime.value = randomBetween(0.009, 0.057);
 
     highpass.type = "highpass";
     highpass.frequency.value = 260;
 
     lowpass.type = "lowpass";
-    lowpass.frequency.value = randomBetween(3900, 4900);
+    lowpass.frequency.value = randomBetween(3900, 6900);
 
-    wet.gain.value = randomBetween(0.065, 0.095);
+    wet.gain.value = randomBetween(0.29, 0.6);
 
     convolver.buffer = makeImpulseResponse(
       context,
-      randomBetween(0.55, 0.85),
-      randomBetween(2.2, 3.1)
+      randomBetween(2.2, 4.85),
+      randomBetween(1.4, 3.1)
     );
 
     input.connect(preDelay);
@@ -1332,16 +1527,17 @@
 
   function pickAvailableWord(category, preferredWords) {
     const entries = vocabulary[category] || [];
+    const allowed = new Set(
+      preferredWords.map(word => word.toLowerCase())
+    );
+    const matches = entries.filter(entry =>
+      allowed.has(entry.word.toLowerCase())
+    );
 
-    for (const word of preferredWords) {
-      const match = entries.find(entry =>
-        entry.word.toLowerCase() === word.toLowerCase()
-      );
-
-      if (match) return match;
-    }
-
-    return randomChoice(entries);
+    // Important: choose randomly from every available permitted word.
+    // The previous version always returned the first match in the list,
+    // which is why "i", "is", "why", etc. could dominate a template.
+    return randomChoice(matches.length ? matches : entries);
   }
 
   function uniquePicks(category, count) {
