@@ -272,7 +272,7 @@
     const captions = {
       mean: "I didn't mean to say that.",
       say: "Why did I say that?",
-	  lalala: "Hum ti hum... La la la la la la la whoo-hooo"
+	  lalala: "Hum ti hum... La la la la la la la whoo-hooo",
       ssh: "Sssh, someone is here.",
       gosh: "Gosh! I'm soo drunk right now!",
       who: "Who are you?",
