@@ -51,7 +51,23 @@
   let lastRarePath = null;
 
   const PLURAL_DETERMINERS = new Set([
-    "all", "two", "these", "those", "many", "several", "both", "three", "four", "heaps", 
+    "all", "two", "these", "those", "many", "several", "both", "three", "four", "heaps"
+  ]);
+
+  // Some words naturally drag a companion word behind them.
+  // Add more here later if the oracle acquires further grammatical habits.
+  const FOLLOWER_WORDS = new Map([
+    ["heaps", { category: "preposition", word: "of" }]
+  ]);
+
+  // A flat audio/archaic folder is supported. Known words receive a slightly
+  // more grammatical role; unknown additions can still appear as rare openers.
+  const ARCHAIC_OPENERS = new Set([
+    "lo", "behold", "alas", "hark", "marry"
+  ]);
+
+  const ARCHAIC_ADVERBS = new Set([
+    "verily", "perchance", "mayhaps", "henceforth", "forsooth"
   ]);
 
   initialise();
@@ -494,6 +510,7 @@
     if (path.includes("/adverb/")) return 0.42;
     if (path.includes("/modal/")) return 0.48;
     if (path.includes("/interjection/")) return 0.55;
+    if (path.includes("/archaic/")) return 0.50;
     if (path.includes("/preposition/")) return 0.12;
     if (path.includes("/connector/")) return 0.08;
     if (path.includes("/determiner/")) return 0.02;
@@ -513,6 +530,7 @@
     if (path.includes("/adjective/")) return "adjective";
     if (path.includes("/adverb/")) return "adverb";
     if (path.includes("/interjection/")) return "interjection";
+    if (path.includes("/archaic/")) return "interjection";
     return "normal";
   }
 
@@ -533,7 +551,7 @@
   function buildThought() {
     // The original sentence forms remain dominant. The newer forms appear
     // often enough to be noticed, but not often enough to civilise the oracle.
-    const builder = weightedChoice([
+    const choices = [
       [sentenceModal, 18],
       [sentenceCopular, 15],
       [sentenceCompoundSubject, 12],
@@ -546,9 +564,83 @@
       [sentencePronounHaveBeen, 4],
       [sentenceQuestion, 5],
       [sentenceExistential, 3]
-    ]);
+    ];
 
-    return builder();
+    if (hasArchaicWord(["doth", "hath"])) {
+      choices.push([sentenceArchaic, 3]);
+    }
+
+    const builder = weightedChoice(choices);
+    return addArchaicFlavour(builder());
+  }
+
+  function sentenceArchaic() {
+    const available = availableArchaicWords(["doth", "hath"]);
+    const auxiliary = randomChoice(available);
+    const word = auxiliary.word.toLowerCase();
+
+    if (word === "hath") {
+      return {
+        words: [
+          ...buildNounPhrase(),
+          auxiliary,
+          ...maybeNot(0.16),
+          ...buildNounPhrase()
+        ],
+        mode: randomChoice(["solemn", "oracle"])
+      };
+    }
+
+    return {
+      words: [
+        ...buildNounPhrase(),
+        auxiliary,
+        ...maybeNot(0.18),
+        ...maybeFunctionAdverb(0.22),
+        pick("verb"),
+        ...maybeObjectPhrase(),
+        ...maybePrepositionalPhrase()
+      ],
+      mode: randomChoice(["solemn", "oracle", "measured"])
+    };
+  }
+
+  function addArchaicFlavour(thought) {
+    const pool = vocabulary.archaic;
+
+    if (!Array.isArray(pool) || pool.length === 0 || Math.random() >= 0.11) {
+      return thought;
+    }
+
+    const usable = pool.filter(entry => {
+      const word = entry.word.toLowerCase();
+      return word !== "doth" && word !== "hath";
+    });
+
+    if (!usable.length) return thought;
+
+    const preferredOpeners = usable.filter(entry =>
+      ARCHAIC_OPENERS.has(entry.word.toLowerCase())
+    );
+    const preferredAdverbs = usable.filter(entry =>
+      ARCHAIC_ADVERBS.has(entry.word.toLowerCase())
+    );
+
+    if (preferredAdverbs.length && Math.random() < 0.45) {
+      const insertionPoint = Math.min(
+        thought.words.length,
+        randomInt(1, Math.max(1, Math.min(4, thought.words.length)))
+      );
+      thought.words.splice(insertionPoint, 0, randomChoice(preferredAdverbs));
+      return thought;
+    }
+
+    const opener = randomChoice(preferredOpeners.length ? preferredOpeners : usable);
+    thought.words.unshift(
+      opener,
+      { type: "pause", duration: randomBetween(0.28, 0.65) }
+    );
+    return thought;
   }
 
   function sentenceModal() {
@@ -783,6 +875,7 @@
     if (Math.random() < 0.9) {
       determiner = pick("determiner");
       phrase.push(determiner);
+      phrase.push(...followerFor(determiner));
     }
 
     phrase.push(...buildAdjectiveList(0, adjectiveMaximum()));
@@ -796,6 +889,7 @@
       if (Math.random() < 0.75) {
         secondDeterminer = pick("determiner");
         phrase.push(secondDeterminer);
+        phrase.push(...followerFor(secondDeterminer));
       }
 
       phrase.push(...buildAdjectiveList(0, adjectiveMaximum()));
@@ -808,6 +902,33 @@
     }
 
     return phrase;
+  }
+
+  function followerFor(entry) {
+    const word = entry?.word?.toLowerCase();
+    const follower = FOLLOWER_WORDS.get(word);
+
+    if (!follower) return [];
+
+    const match = findCategoryWord(follower.category, follower.word);
+    return match ? [match] : [];
+  }
+
+  function findCategoryWord(category, wantedWord) {
+    const entries = vocabulary[category] || [];
+    return entries.find(entry =>
+      entry.word.toLowerCase() === wantedWord.toLowerCase()
+    ) || null;
+  }
+
+  function availableArchaicWords(words) {
+    const pool = vocabulary.archaic || [];
+    const allowed = new Set(words.map(word => word.toLowerCase()));
+    return pool.filter(entry => allowed.has(entry.word.toLowerCase()));
+  }
+
+  function hasArchaicWord(words) {
+    return availableArchaicWords(words).length > 0;
   }
 
   function buildNounForDeterminer(determiner) {
